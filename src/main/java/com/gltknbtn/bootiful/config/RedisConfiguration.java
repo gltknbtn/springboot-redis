@@ -6,12 +6,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,10 +27,34 @@ public class RedisConfiguration extends CachingConfigurerSupport {
 
     @Autowired
     private CacheConfigurationProperties cacheConfigurationProperties;
+    private String KEY_SEPERATOR = "#";
+
+    @Bean
+    @Override
+    public KeyGenerator keyGenerator() {
+        return (target, method, params) -> {
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(target.getClass().getSimpleName());
+            sb.append(KEY_SEPERATOR);
+            sb.append(method.getName());
+            sb.append(KEY_SEPERATOR);
+            for(Object param : params){
+                sb.append(param.toString());
+                sb.append(KEY_SEPERATOR);
+            }
+
+            String str = sb.toString();
+
+            return str.substring(0, str.length() - 1);
+        };
+    }
 
     private org.springframework.data.redis.cache.RedisCacheConfiguration createCacheConfiguration(long timeoutInSeconds) {
+        RedisSerializationContext.SerializationPair<Object> jsonSerializer = RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer());
         return org.springframework.data.redis.cache.RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofSeconds(timeoutInSeconds));
+                .entryTtl(Duration.ofSeconds(timeoutInSeconds))
+                .serializeValuesWith(jsonSerializer);
     }
 
     @Bean

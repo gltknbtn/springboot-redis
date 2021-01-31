@@ -25,7 +25,7 @@ public class MovieService implements IMovieService {
     @Cacheable(cacheNames = "movie", key = "'movie#' + #id")
     @Override
     public Movie findOne(Long id) {
-        return movieRepository.findById(id).get();
+        return movieRepository.findById(id).orElse(null);
     }
 
     @CachePut(cacheNames = "movie", key = "'movie#' + #movie.id")
